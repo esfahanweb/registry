@@ -5,8 +5,8 @@ FROM debian:bullseye-slim AS build
 RUN apt-get update && apt-get install -y apache2-utils
 
 # Set environment variables for authentication
-ENV REGISTRY_USER=$REGISTRY_USER
-ENV REGISTRY_PASSWORD=$REGISTRY_PASSWORD
+ENV REGISTRY_USER ${REGISTRY_USER}
+ENV REGISTRY_PASSWORD ${REGISTRY_PASSWORD}
 
 # Create the htpasswd file for authentication using the provided environment variables
 RUN mkdir -p /auth && \
