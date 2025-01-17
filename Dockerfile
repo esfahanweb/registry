@@ -1,18 +1,30 @@
-# Base image for Docker registry
-FROM registry:2
+# Stage 1: Build the htpasswd file
+FROM debian:bullseye-slim AS build
 
-# Install required utilities for htpasswd and Nginx
-RUN apt-get update && apt-get install -y apache2-utils nginx
+# Install apache-utils to generate htpasswd file
+RUN apt-get update && apt-get install -y apache2-utils
 
 # Set environment variables for authentication
-ENV REGISTRY_AUTH=htpasswd
-ENV REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm"
-ENV REGISTRY_AUTH_HTPASSWD_PATH="/auth/htpasswd"
 ENV REGISTRY_USER="admin"
 ENV REGISTRY_PASSWORD="password"
 
-# Create the necessary directories
-RUN mkdir -p /etc/docker/registry /auth /var/lib/registry /etc/nginx/sites-available /etc/nginx/sites-enabled
-
 # Create the htpasswd file for authentication using the provided environment variables
-RUN echo "$REGISTRY_USER:$(htpasswd -nbB $REGISTRY_USER $REGISTRY_PASSWORD | cut -d: -f2)" > /auth/htpasswd
+RUN mkdir -p /auth && \
+    echo "$REGISTRY_USER:$(htpasswd -nbB $REGISTRY_USER $REGISTRY_PASSWORD | cut -d: -f2)" > /auth/htpasswd
+
+# Stage 2: Final registry image
+FROM registry:2
+
+# Copy the htpasswd file from the build stage
+COPY --from=build /auth /auth
+
+# Set environment variables for registry authentication
+ENV REGISTRY_AUTH=htpasswd
+ENV REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm"
+ENV REGISTRY_AUTH_HTPASSWD_PATH="/auth/htpasswd"
+
+# Expose the registry port
+EXPOSE 5000
+
+# Run the Docker registry with the configuration
+CMD ["registry", "serve", "/etc/docker/registry/config.yml"]
